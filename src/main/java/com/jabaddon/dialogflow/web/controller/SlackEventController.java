@@ -5,6 +5,7 @@ import allbegray.slack.type.Bot;
 import allbegray.slack.webapi.SlackWebApiClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jabaddon.dialogflow.service.CacheService;
 import com.jabaddon.dialogflow.service.DbService;
 import com.jabaddon.dialogflow.service.SlackInstallation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ public class SlackEventController {
     @Autowired
     private DbService dbService;
 
+    @Autowired
+    private CacheService cacheService;
+
     @PostMapping(value = "/action-endpoint", produces = MediaType.TEXT_PLAIN_VALUE)
     public String slack(@RequestBody String body) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -35,17 +39,22 @@ public class SlackEventController {
 
         JsonNode eventNode = root.get("event");
         if (eventNode != null) {
-            Optional<SlackInstallation> optionalSlackInstallation = dbService.getSlackInstallation(root.path("team_id").asText());
+            Optional<SlackInstallation> optionalSlackInstallation =
+                    dbService.getSlackInstallation(root.path("team_id").asText());
             optionalSlackInstallation.ifPresent(slackInstallation -> {
-                SlackWebApiClient webApiClient = SlackClientFactory.createWebApiClient(slackInstallation.getBotAccessToken());
+                SlackWebApiClient webApiClient =
+                        SlackClientFactory.createWebApiClient(slackInstallation.getBotAccessToken());
 
-                if (eventNode.get("bot_id") != null) {
-                    Bot bot = webApiClient.getBotInfo(eventNode.path("bot_id").asText());
+                String channelId = eventNode.path("channel").asText();
+                JsonNode botIdNode = eventNode.get("bot_id");
+                if (botIdNode != null) {
+                    String botId = botIdNode.asText();
+                    Bot bot = cacheService.getBotInfo(botId, () -> webApiClient.getBotInfo(botId));
                     if (!slackInstallation.getBotUserId().equals(bot.getUser_id())) {
-                        webApiClient.postMessage(eventNode.path("channel").asText(), "Hi there!");
+                        webApiClient.postMessage(channelId, "Hi there!");
                     }
                 } else {
-                    webApiClient.postMessage(eventNode.path("channel").asText(), "Hi there!");
+                    webApiClient.postMessage(channelId, "Hi there!");
                 }
             });
         }

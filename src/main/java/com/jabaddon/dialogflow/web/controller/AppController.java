@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,7 +31,7 @@ public class AppController {
     @GetMapping("/")
     public ModelAndView index(Map<String, Object> model) {
         model.put("title", "Install Bot");
-        model.put("client_id", envService.getCliendId());
+        model.put("client_id", envService.getClientId());
 
         return new ModelAndView("index", model);
     }
@@ -40,12 +39,12 @@ public class AppController {
     @GetMapping("/redirect")
     public ModelAndView redirect(Map<String, Object> model, @RequestParam String code) {
         model.put("title", "Install Bot");
-        model.put("client_id", envService.getCliendId());
+        model.put("client_id", envService.getClientId());
         LOGGER.debug("Slack code: {}", code);
 
         SlackWebApiClient webApiClient = SlackClientFactory.createWebApiClient(null);
         OAuthAccessToken oAuthAccessToken = webApiClient.accessOAuth(
-                envService.getCliendId(), envService.getClientSecret(), code, null);
+                envService.getClientId(), envService.getClientSecret(), code, null);
 
         LOGGER.debug("Access Token: {}", oAuthAccessToken);
 
